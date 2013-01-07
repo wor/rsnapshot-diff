@@ -36,8 +36,9 @@ my $program_name = 'rsnapshot-diff';
 my %opts;
 my $verbose = 0;
 my $ignore = 0;
+my $filesize = 0;
 
-my $result = getopts('vVhi', \%opts);
+my $result = getopts('svVhi', \%opts);
 
 # help
 if ($opts{'h'}) {
@@ -50,6 +51,7 @@ if ($opts{'h'}) {
     -v    be verbose
     -V    be more verbose (mutter about unchanged files)
     -i    ignore symlinks, directories, and special files in verbose output
+    -s    show invidual file sizes with verbose
     dir1  the first directory to look at
     dir2  the second directory to look at
 
@@ -124,6 +126,8 @@ if ($opts{'V'}) { $verbose = 2; }
 # ignore
 if ($opts{'i'}) { $ignore = 1; }
 
+# file size
+if ($opts{'s'}) { $filesize = 1; }
 
 if(!exists($ARGV[1]) || !-d $ARGV[0] || !-d $ARGV[1]) {
     die("$program_name\nUsage: $program_name [-vVhi] dir1 dir2\nType $program_name -h for details\n");
@@ -176,14 +180,20 @@ sub compare_dirs {
 }
 
 sub add {
+    my $space;
     my @added = @_;
     print "Adding ".join(', ', @added)."\n" if(DEBUG && @added);
     foreach(grep { !-d } @added) {
         $addedfiles++;
-        $addedspace += (mystat($_))[7];
+        $space = (mystat($_))[7];
+        $addedspace += $space;
         # if ignore is on, only print files
         unless ($ignore && (-l || !-f)) {
-            print "+ $_\n" if($verbose);
+            if($verbose) {
+                print "+ $_";
+                print " $space" if($filesize);
+                print "\n"
+            }
         }
     }
     foreach my $dir (grep { !-l && -d } @added) {
@@ -193,14 +203,20 @@ sub add {
 }
 
 sub remove {
+    my $space;
     my @removed = @_;
     print "Removing ".join(', ', @removed)."\n" if(DEBUG && @removed);
     foreach(grep { !-d } @removed) {
         $deletedfiles++;
-        $deletedspace += (mystat($_))[7];
+        $space = (mystat($_))[7];
+        $deletedspace += $space;
         # if ignore is on, only print files
         unless ($ignore && (-l || !-f)) {
-            print "- $_\n" if($verbose);
+            if($verbose) {
+                print "- $_";
+                print " $space" if($filesize);
+                print "\n"
+            }
         }
     }
     foreach my $dir (grep { !-l && -d } @removed) {
