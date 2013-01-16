@@ -37,8 +37,9 @@ my %opts;
 my $verbose = 0;
 my $ignore = 0;
 my $filesize = 0;
+my $humanreadable = 0;
 
-my $result = getopts('svVhi', \%opts);
+my $result = getopts('ksvVhi', \%opts);
 
 # help
 if ($opts{'h'}) {
@@ -52,6 +53,7 @@ if ($opts{'h'}) {
     -V    be more verbose (mutter about unchanged files)
     -i    ignore symlinks, directories, and special files in verbose output
     -s    show invidual file sizes with verbose
+    -k    print sizes in human readable format (e.g., 1K 12M 3G)
     dir1  the first directory to look at
     dir2  the second directory to look at
 
@@ -129,6 +131,9 @@ if ($opts{'i'}) { $ignore = 1; }
 # file size
 if ($opts{'s'}) { $filesize = 1; }
 
+# humanize file sizes
+if ($opts{'k'}) { $humanreadable = 1; }
+
 if(!exists($ARGV[1]) || !-d $ARGV[0] || !-d $ARGV[1]) {
     die("$program_name\nUsage: $program_name [-vVhi] dir1 dir2\nType $program_name -h for details\n");
 }
@@ -141,9 +146,30 @@ my($addedfiles, $addedspace, $deletedfiles, $deletedspace) = (0, 0, 0, 0);
 
 compare_dirs($dirold, $dirnew);
 
+$addedspace = humanize_size($addedspace) if($humanreadable);
+$deletedspace = humanize_size($deletedspace) if($humanreadable);
+
 print "Between $dirold and $dirnew:\n";
 print "  $addedfiles were added, taking $addedspace bytes;\n";
 print "  $deletedfiles were removed, saving $deletedspace bytes;\n";
+
+sub humanize_size {
+    my ($space) = @_;
+    my $bs = 1024;
+
+    if ($space < $bs) {
+        return $space;
+    }
+    elsif ($space >= $bs and $space < $bs**2) {
+        return sprintf("%.1fK",$space/$bs);
+    }
+    elsif ($space >= $bs**2 and $space < $bs**3) {
+        return sprintf("%.1fM", $space/($bs**2));
+    }
+    else {
+        return sprintf("%.1fG", $space/($bs**3));
+    }
+}
 
 sub compare_dirs {
     my($old, $new) = @_;
@@ -187,6 +213,9 @@ sub add {
         $addedfiles++;
         $space = (mystat($_))[7];
         $addedspace += $space;
+        if ($humanreadable) {
+            $space = humanize_size($space)
+        }
         # if ignore is on, only print files
         unless ($ignore && (-l || !-f)) {
             if($verbose) {
@@ -210,6 +239,9 @@ sub remove {
         $deletedfiles++;
         $space = (mystat($_))[7];
         $deletedspace += $space;
+        if ($humanreadable) {
+            $space = humanize_size($space)
+        }
         # if ignore is on, only print files
         unless ($ignore && (-l || !-f)) {
             if($verbose) {
