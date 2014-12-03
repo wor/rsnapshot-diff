@@ -146,8 +146,10 @@ my($addedfiles, $addedspace, $deletedfiles, $deletedspace) = (0, 0, 0, 0);
 
 compare_dirs($dirold, $dirnew);
 
-$addedspace = humanize_size($addedspace) if($humanreadable);
-$deletedspace = humanize_size($deletedspace) if($humanreadable);
+if($humanreadable) {
+    $addedspace = humanize_size($addedspace);
+    $deletedspace = humanize_size($deletedspace);
+}
 
 print "Between $dirold and $dirnew:\n";
 print "  $addedfiles were added, taking $addedspace bytes;\n";
